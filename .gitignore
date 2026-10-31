@@ -1,0 +1,5 @@
+*.backup
+*.rsc~
+*.log
+.DS_Store
+Thumbs.db
