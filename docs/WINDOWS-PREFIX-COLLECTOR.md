@@ -1,27 +1,53 @@
-# Windows Python prefix collector
+# Windows ASN Prefix Collector — বাংলা Setup Guide
 
-The original Windows prefix collector is at [tools/asn_to_mikrotik.py](../tools/asn_to_mikrotik.py).
+## Step 1: Python Script ডাউনলোড করুন
 
-Run from Windows CMD (Python 3.9+):
+GitHub-এর [Interactive Windows Script](../tools/asn_collector.py) খুলে **Download raw file** নির্বাচন করুন। ফাইলের নাম `asn_collector.py` রেখে Desktop-এ Save করুন। Windows-এ Python 3.9+ ইনস্টল থাকতে হবে; CMD-তে `py --version` দিয়ে পরীক্ষা করতে পারেন।
 
-```bat
+## Step 2: Script চালান
+
+Windows CMD খুলে শুধু নিচের Command চালান:
+
+```cmd
+py "%USERPROFILE%\Desktop\asn_collector.py"
+```
+
+এরপর আপনার পছন্দের ASN লিখুন। উদাহরণ:
+
+```text
+Enter ASN (example AS3333): AS3333
+```
+
+Script সফলভাবে চললে Desktop-এ **`AS3333_mikrotik.rsc`** নামে ফাইল তৈরি হবে। এটি RIPEstat API থেকে সম্প্রতি পর্যবেক্ষিত IPv4 prefixes ব্যবহার করে। API/network error হলে ফাইল তৈরি হবে না।
+
+> Desktop যদি OneDrive-এ redirect করা থাকে, তাহলে Desktop path ভিন্ন হতে পারে। সে ক্ষেত্রে CMD command ও script-এর output path পরিবর্তন করতে হবে।
+
+## Step 3: MikroTik-এ Import
+
+Generated `.rsc` ফাইলটি আগে Text Editor-এ খুলে Prefix এবং Address List Name যাচাই করুন। এই interactive script `ASN_AS3333` ধরনের Address List Name ব্যবহার করে, যা DIT-CORE-এর `ASN_AS15169` naming convention-এর সঙ্গে মেলে।
+
+WinBox → Files-এ Upload করে Terminal-এ:
+
+```routeros
+/import file-name=AS3333_mikrotik.rsc
+```
+
+তারপর:
+
+```routeros
+/ip firewall address-list print count-only where list=ASN_AS3333
+```
+
+**সতর্কতা:** Import শুধু entry যোগ করে। পুরোনো Prefix নিজে থেকে remove হয় না এবং বারবার Import করলে duplicate entry হতে পারে। Production MikroTik-এ আগে Backup এবং CPU ব্যবহার যাচাই করুন।
+
+## Alternative: Multiple ASN Command Line Collector
+
+একাধিক ASN একসঙ্গে নিতে [tools/asn_to_mikrotik.py](../tools/asn_to_mikrotik.py) ব্যবহার করুন:
+
+```cmd
 py tools\asn_to_mikrotik.py 15169 32934 13335
 ```
 
-This uses Python's **standard library only** and the RIPEstat announced-prefixes endpoint. It creates `AS15169.rsc`, `AS32934.rsc`, etc., in your current working folder.
+এই alternative script-এর generated list নাম `AS15169`, কিন্তু interactive script-এর নাম `ASN_AS15169`। তাই অন্য script-এর Output আপনার existing Mangle Rule-এ ব্যবহার করার আগে নাম মিলিয়ে নিন।
 
-For a separate output directory:
-
-```bat
-py tools\asn_to_mikrotik.py 15169 --out output
-```
-
-## Important list-name mismatch
-
-The original script exports firewall address lists named `AS15169`, but the DIT-CORE example Mangle rules use `ASN_AS15169`. **These names do not match**: imported lists named `AS15169` will not be counted by existing `ASN_AS15169` rules.
-
-Before importing, open the generated `.rsc` file and change `list=AS15169` to `list=ASN_AS15169` (and likewise for other ASN values if using that naming scheme). Verify the output file and backup your router first.
-
-Importing a generated file is additive, not a safe sync: it does **not** remove stale prefixes and may duplicate entries if repeatedly imported. No router configuration is changed by running the Python script itself.
-
-Data reflects recently observed BGP announcements, not guaranteed real-time current routes. Verify mapping and CPU before deploying to an ISP production core.
+Data হলো recently observed BGP announcements, নিশ্চিত real-time origin-AS table নয়।
