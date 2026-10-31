@@ -1,8 +1,9 @@
-# RouterOS v7 read-only; one 5-second sample for selected configured ASNs.
-# Accepts Mangle comments AS<asn>-DOWN/UP or ASN_AS<asn>-DOWN/UP.
-# Keep all variables inside one :do block for /import scope.
+# RouterOS v7 read-only; 5-second DOWN/UP sample for Google and Meta.
+# Standard Mangle comments: AS15169-DOWN/UP and AS32934-DOWN/UP
+# Standard address lists: ASN_AS15169 and ASN_AS32934
+# All variables share the same :do scope for /import.
 :do {
-    :local asns {"15169";"32934";"13335"}
+    :local asns {"15169";"32934"}
     :local startDown [:toarray ""]
     :local startUp [:toarray ""]
     :local valid [:toarray ""]
@@ -11,8 +12,6 @@
     :foreach asn in=$asns do={
         :local d [/ip firewall mangle find where comment=("AS" . $asn . "-DOWN")]
         :local u [/ip firewall mangle find where comment=("AS" . $asn . "-UP")]
-        :if ([:len $d] = 0) do={ :set d [/ip firewall mangle find where comment=("ASN_AS" . $asn . "-DOWN")] }
-        :if ([:len $u] = 0) do={ :set u [/ip firewall mangle find where comment=("ASN_AS" . $asn . "-UP")] }
         :if (([:len $d] = 1) && ([:len $u] = 1)) do={
             :set startDown ($startDown, [/ip firewall mangle get $d bytes])
             :set startUp ($startUp, [/ip firewall mangle get $u bytes])
